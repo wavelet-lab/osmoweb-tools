@@ -5,8 +5,14 @@
 These tools provide scripts to build, manage, and monitor Osmocom components in a Debian-based environment.
 
 **Repository structure:**
-|- [scripts](#osmo-management) - Osmo management scripts
-|- [ws-udp-proxy](#ws-udp-proxy) - Qt6-based WebSocket UDP proxy utility for bridging UDP traffic via WebSocket connections
+```
+├── scripts/         - Osmo management scripts
+└── ws-udp-proxy/    - Qt6-based WebSocket UDP proxy utility for bridging UDP traffic via WebSocket connections
+```
+
+**Components:**
+- [scripts](#osmo-management) - Osmo management scripts
+- [ws-udp-proxy](#ws-udp-proxy) - Qt6-based WebSocket UDP proxy utility for bridging UDP traffic via WebSocket connections
 
 ## Osmo Management
 These scripts simplify building and managing Osmocom backend components on Debian-based systems.
