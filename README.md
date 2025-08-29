@@ -2,7 +2,7 @@
 [OsmoWeb-Tools](https://github.com/wavelet-lab/osmoweb-tools) is a repository with helper tools for integrating Osmocom’s mobile communication stack into web backends.
 
 ## Description
-These tools provide scripts to build, manage, and monitor Osmocom components in a Debian-based environment.
+These tools provide scripts to build, manage, and monitor Osmocom components across different Linux distributions.
 
 **Repository structure:**
 ```
@@ -15,7 +15,16 @@ These tools provide scripts to build, manage, and monitor Osmocom components in 
 - [ws-udp-proxy](#ws-udp-proxy) - Qt6-based WebSocket UDP proxy utility for bridging UDP traffic via WebSocket connections
 
 ## Osmo Management
-These scripts simplify building and managing Osmocom backend components on Debian-based systems.
+These scripts simplify building and managing Osmocom backend components on various Linux distributions.
+
+**Supported distributions:**
+- **Debian/Ubuntu** (apt-get)
+- **Fedora/RHEL 8+** (dnf)
+- **CentOS/RHEL 7** (yum)
+- **Arch Linux** (pacman)
+- **openSUSE/SLES** (zypper)
+
+The build script automatically detects your package manager and installs the appropriate development packages for your distribution.
 
 **Links to the parts:**
 - [Building Osmo](#build-osmo-components)
@@ -25,6 +34,8 @@ These scripts simplify building and managing Osmocom backend components on Debia
 
 ### Build Osmo components
 This script runs under the current user, but it requires root privileges to install the necessary packages and to install the built Osmocom utilities and libraries into the system. Before starting, make sure your user account has sudo access.
+
+The script automatically detects your package manager and installs the appropriate development packages for your Linux distribution.
 
 Build all Osmo components from source code:
 ```bash
@@ -38,6 +49,13 @@ Build all Osmo components from source code:
 - `-c, --cfg <path>` - Specify a custom osmo config path (default: ./osmo/config).
 - `-q, --quiet` -  Quiet mode – suppress output messages.
 - `-h, --help` - Display help message.
+
+**Supported package managers:**
+- apt-get (Debian/Ubuntu)
+- dnf (Fedora/RHEL 8+)
+- yum (CentOS/RHEL 7)
+- pacman (Arch Linux)
+- zypper (openSUSE/SLES)
 
 **Environment variables:**
 - `OSMO_PATH` - Override default build path.

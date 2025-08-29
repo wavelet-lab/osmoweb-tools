@@ -2,9 +2,7 @@
 
 me=$(basename "$0")
 
-APT_CMD="sudo apt-get"
-APT_UPDATE_ARGS="-y update"
-APT_INSTALL_ARGS="-y install"
+# Constants
 OSMO_INSTALL_PREFIX="/usr/local"
 
 # Color definitions
@@ -48,6 +46,13 @@ show_usage() {
     echo "  ${CYAN}-q, --quiet${RESET}    Quiet mode - suppress output messages."
     echo "  ${CYAN}-h, --help${RESET}     Show this help message."
     echo ""
+    echo "${BOLD}Supported package managers:${RESET}"
+    echo "  • apt-get (Debian/Ubuntu)"
+    echo "  • dnf (Fedora/RHEL 8+)"
+    echo "  • yum (CentOS/RHEL 7)"
+    echo "  • pacman (Arch Linux)"
+    echo "  • zypper (openSUSE/SLES)"
+    echo ""
     echo "${BOLD}Environment variables:${RESET}"
     echo "  ${CYAN}OSMO_PATH${RESET}      Override default build path"
     exit 0
@@ -82,7 +87,7 @@ log_warning() {
 # Function for info messages
 log_info() {
     if [ "$quiet_mode" = false ]; then
-        echo "${BLUE}$@${RESET}"
+        echo "${CYAN}$@${RESET}"
     fi
 }
 
@@ -144,58 +149,252 @@ remove_old_builds() {
     log_success "Old builds removed successfully"
 }
 
+# Package manager detection and configuration
+PACKAGE_MANAGER=""
+PKG_CMD=""
+PKG_UPDATE_ARGS=""
+PKG_INSTALL_ARGS=""
+
+# Function to detect package manager
+detect_package_manager() {
+    if command -v apt-get >/dev/null 2>&1; then
+        PACKAGE_MANAGER="apt"
+        PKG_CMD="sudo apt-get"
+        PKG_UPDATE_ARGS="-y update"
+        PKG_INSTALL_ARGS="-y install"
+    elif command -v dnf >/dev/null 2>&1; then
+        PACKAGE_MANAGER="dnf"
+        PKG_CMD="sudo dnf"
+        PKG_UPDATE_ARGS="makecache"
+        PKG_INSTALL_ARGS="-y install"
+    elif command -v yum >/dev/null 2>&1; then
+        PACKAGE_MANAGER="yum"
+        PKG_CMD="sudo yum"
+        PKG_UPDATE_ARGS="makecache"
+        PKG_INSTALL_ARGS="-y install"
+    elif command -v pacman >/dev/null 2>&1; then
+        PACKAGE_MANAGER="pacman"
+        PKG_CMD="sudo pacman"
+        PKG_UPDATE_ARGS="-Sy"
+        PKG_INSTALL_ARGS="-S --noconfirm"
+    elif command -v zypper >/dev/null 2>&1; then
+        PACKAGE_MANAGER="zypper"
+        PKG_CMD="sudo zypper"
+        PKG_UPDATE_ARGS="refresh"
+        PKG_INSTALL_ARGS="-n install"
+    else
+        log_error "No supported package manager found (apt, dnf, yum, pacman, zypper)"
+        exit 1
+    fi
+    
+    log_output "Detected package manager: $PACKAGE_MANAGER"
+}
+
+# Function to check if a package is available
+check_package_available() {
+    local package="$1"
+    
+    case "$PACKAGE_MANAGER" in
+        "apt")
+            apt-cache search "^${package}$" | grep -q "^${package}"
+            ;;
+        "dnf")
+            dnf list available "$package" >/dev/null 2>&1
+            ;;
+        "yum")
+            yum list available "$package" >/dev/null 2>&1
+            ;;
+        "pacman")
+            pacman -Ss "^${package}$" >/dev/null 2>&1
+            ;;
+        "zypper")
+            zypper se -x "$package" >/dev/null 2>&1
+            ;;
+        *)
+            # If we can't check, assume it's available
+            return 0
+            ;;
+    esac
+}
+
+# Function to get build packages
+get_build_packages() {
+    case "$PACKAGE_MANAGER" in
+        "apt")
+            echo "build-essential autoconf automake libtool pkg-config git cmake"
+            ;;
+        "dnf"|"yum")
+            echo "gcc gcc-c++ make autoconf automake libtool pkgconfig git cmake"
+            ;;
+        "pacman")
+            echo "base-devel autoconf automake libtool pkgconf git cmake"
+            ;;
+        "zypper")
+            echo "gcc gcc-c++ make autoconf automake libtool pkg-config git cmake"
+            ;;
+    esac
+}
+
+# Function to get core packages
+get_core_packages() {
+    case "$PACKAGE_MANAGER" in
+        "apt")
+            echo "libgnutls28-dev libsctp-dev libtalloc-dev libpcsclite-dev libusb-1.0-0-dev libmnl-dev libsystemd-dev"
+            ;;
+        "dnf"|"yum")
+            echo "gnutls-devel lksctp-tools-devel libtalloc-devel pcsc-lite-devel libusb1-devel libmnl-devel systemd-devel"
+            ;;
+        "pacman")
+            echo "gnutls lksctp-tools talloc pcsclite libusb libmnl systemd-libs"
+            ;;
+        "zypper")
+            echo "libgnutls-devel lksctp-tools-devel libtalloc-devel pcsc-lite-devel libusb-1_0-devel libmnl-devel systemd-devel"
+            ;;
+    esac
+}
+
+# Function to get network packages
+get_network_packages() {
+    case "$PACKAGE_MANAGER" in
+        "apt")
+            local apt_packages="libortp-dev libosip2-dev libsofia-sip-ua-dev"
+            # liburing-dev may not be available on older Ubuntu versions
+            if check_package_available "liburing-dev"; then
+                apt_packages+=" liburing-dev"
+            fi
+            echo "$apt_packages"
+            ;;
+        "dnf"|"yum")
+            echo "liburing-devel ortp-devel libosip2-devel sofia-sip-devel"
+            ;;
+        "pacman")
+            echo "liburing ortp libosip2 sofia-sip"
+            ;;
+        "zypper")
+            echo "liburing-devel libortp-devel libosip2-devel libsofia-sip-ua-devel"
+            ;;
+    esac
+}
+
+# Function to get database packages
+get_database_packages() {
+    case "$PACKAGE_MANAGER" in
+        "apt")
+            echo "libsqlite3-dev libdbi-dev libdbd-sqlite3"
+            ;;
+        "dnf"|"yum")
+            echo "sqlite-devel libdbi-devel libdbi-dbd-sqlite"
+            ;;
+        "pacman")
+            echo "sqlite libdbi"
+            ;;
+        "zypper")
+            echo "sqlite3-devel libdbi-devel libdbi-drivers-dbd-sqlite3"
+            ;;
+    esac
+}
+
+# Function to get SSL packages
+get_ssl_packages() {
+    case "$PACKAGE_MANAGER" in
+        "apt")
+            local apt_packages="libssl-dev libc-ares-dev"
+            # libsmpp34-dev may not be available, try to install what's available
+            if check_package_available "libsmpp34-dev"; then
+                apt_packages+=" libsmpp34-dev"
+            fi
+            echo "$apt_packages"
+            ;;
+        "dnf"|"yum")
+            echo "openssl-devel c-ares-devel"
+            ;;
+        "pacman")
+            echo "openssl c-ares"
+            ;;
+        "zypper")
+            echo "libopenssl-devel libcares-devel"
+            ;;
+    esac
+}
+
+# Function to get documentation packages
+get_doc_packages() {
+    case "$PACKAGE_MANAGER" in
+        "apt")
+            echo "doxygen graphviz"
+            ;;
+        "dnf"|"yum")
+            echo "doxygen graphviz"
+            ;;
+        "pacman")
+            echo "doxygen graphviz"
+            ;;
+        "zypper")
+            echo "doxygen graphviz"
+            ;;
+    esac
+}
+
+# Function to install packages with error handling
+install_package_group() {
+    local group_name="$1"
+    local packages="$2"
+    local critical="$3"  # true/false - whether failure should stop the script
+    
+    if [ -z "$packages" ]; then
+        log_warning "No $group_name packages defined for $PACKAGE_MANAGER"
+        return 0
+    fi
+    
+    log_output "Installing $group_name..."
+    if $PKG_CMD $PKG_INSTALL_ARGS $packages; then
+        log_success "$group_name installed successfully"
+        return 0
+    else
+        if [ "$critical" = "true" ]; then
+            log_error "Failed to install critical $group_name packages"
+            exit 1
+        else
+            log_warning "Some $group_name packages may not be available on this distribution"
+            return 1
+        fi
+    fi
+}
+
 # Function to install required packages
 install_required_packages() {
-    log_output "Installing required packages..."
+    log_output "Installing required packages using $PACKAGE_MANAGER..."
 
-    $APT_CMD $APT_UPDATE_ARGS
+    # Detect package manager if not already done
+    if [ -z "$PACKAGE_MANAGER" ]; then
+        detect_package_manager
+    fi
 
-    # Basic build tools
-    $APT_CMD $APT_INSTALL_ARGS \
-        build-essential \
-        autoconf \
-        automake \
-        libtool \
-        pkg-config \
-        git \
-        cmake
+    # Update package cache
+    log_output "Updating package cache..."
+    if ! $PKG_CMD $PKG_UPDATE_ARGS; then
+        log_error "Failed to update package cache"
+        exit 1
+    fi
 
-    # Core libraries for libosmocore
-    $APT_CMD $APT_INSTALL_ARGS \
-        libgnutls28-dev \
-        libsctp-dev \
-        libtalloc-dev \
-        libpcsclite-dev \
-        libusb-1.0-0-dev \
-        libmnl-dev \
-        libsystemd-dev
-
-    # Network and RTP libraries
-    $APT_CMD $APT_INSTALL_ARGS \
-        liburing-dev \
-        libortp-dev \
-        libosip2-dev \
-        libsofia-sip-ua-dev
-
-    # Database libraries
-    $APT_CMD $APT_INSTALL_ARGS \
-        libsqlite3-dev \
-        libdbi-dev \
-        libdbd-sqlite3
-
-    # SMPP and additional protocols
-    $APT_CMD $APT_INSTALL_ARGS \
-        libssl-dev \
-        libc-ares-dev \
-        libsmpp34-dev
+    # Install package groups
+    install_package_group "build tools" "$(get_build_packages)" "true"
+    install_package_group "core libraries" "$(get_core_packages)" "true"
+    install_package_group "network libraries" "$(get_network_packages)" "true"
+    install_package_group "database libraries" "$(get_database_packages)" "true"
+    
+    # SSL packages - install each separately for better error handling
+    SSL_PACKAGES=$(get_ssl_packages)
+    for pkg in $SSL_PACKAGES; do
+        install_package_group "SSL package ($pkg)" "$pkg" "false"
+    done
 
     # Documentation tools (optional)
     if [ "$enable_docs" = true ]; then
-        log_output "Installing documentation tools..."
-        $APT_CMD $APT_INSTALL_ARGS \
-            doxygen \
-            graphviz
+        install_package_group "documentation tools" "$(get_doc_packages)" "false"
     fi
+
+    log_success "Package installation completed"
 }
 
 # Function to extract configuration files
@@ -394,6 +593,9 @@ log_output "Config path: ${BOLD}$cfg_path${RESET}"
 
 # Remove old builds
 remove_old_builds
+
+# Detect package manager
+detect_package_manager
 
 # Install required packages
 install_required_packages

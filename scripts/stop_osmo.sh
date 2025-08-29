@@ -67,7 +67,7 @@ log_warning() {
 # Function for info messages
 log_info() {
     if [ "$quiet_mode" = false ]; then
-        echo "${BLUE}$@${RESET}"
+        echo "${CYAN}$@${RESET}"
     fi
 }
 
@@ -96,6 +96,7 @@ declare -a osmo_binaries=(
     "osmo-mgw"
     "osmo-msc"
     "osmo-bsc"
+    "osmo-bts-trx"
 )
 
 # Function to find osmo processes

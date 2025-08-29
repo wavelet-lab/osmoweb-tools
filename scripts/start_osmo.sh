@@ -23,6 +23,7 @@ fi
 
 # Default values
 osmo_path="${OSMO_PATH:-}"
+include_bts=false
 quiet_mode=false
 
 # Set default paths based on whether osmo_path is provided
@@ -37,6 +38,7 @@ log_path="${osmo_path}/logs"
 show_usage() {
     echo "${BOLD}Usage:${RESET} $1 [OPTIONS]"
     echo "${BOLD}Options:${RESET}"
+    echo "  ${CYAN}-b, --bts${RESET}      Start also the BTS (Base Transceiver Station) service."
     echo "  ${CYAN}-p, --path${RESET}     Specify a custom osmo build path (default: ./osmo)."
     echo "                 It also changes the config and log paths accordingly."
     echo "                 So if you need to change config or log paths,"
@@ -80,13 +82,17 @@ log_warning() {
 # Function for info messages
 log_info() {
     if [ "$quiet_mode" = false ]; then
-        echo "${BLUE}$@${RESET}"
+        echo "${CYAN}$@${RESET}"
     fi
 }
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
+        -b|--bts)
+            include_bts=true
+            shift
+            ;;
         -p|--path)
             osmo_path="$2"
             log_path="${osmo_path}/logs"
@@ -125,9 +131,11 @@ declare -a osmo_binaries=(
     "osmo-bsc"
 )
 
+osmo_bts_bin="osmo-bts-trx"
+
 # Function to find osmo processes
 find_osmo_pids() {
-    local bins="${osmo_binaries[@]}"
+    local bins="${osmo_binaries[@]} ${osmo_bts_bin}"
     local search=${bins// /|}
     ps axo pid,comm | grep -E "${search}" | awk '{print $1}'
 }
@@ -162,6 +170,9 @@ get_executable_path() {
                 ;;
             "osmo-bsc")
                 echo "${osmo_path}/osmo-bsc/src/osmo-bsc/osmo-bsc"
+                ;;
+            "osmo-bts-trx")
+                echo "${osmo_path}/osmo-bts/src/osmo-bts/osmo-bts-trx"
                 ;;
             *)
                 log_error "Unknown program: $program"
@@ -224,25 +235,34 @@ check_conflicting_old_libraries() {
     fi
 }
 
+# Function to check executable and related config
+check_executable_and_config_exists() {
+    local binary="$1"
+    local exec_path=$(get_executable_path "$binary")
+    local cfg_file=$(get_config_path "$cfg_path" "$binary")
+    if [ ! -x "$exec_path" ]; then
+        log_error "$binary not found at $exec_path or not executable."
+        exit 1
+    else
+        log_success "    $binary found at $exec_path ✓"
+    fi
+    if [ ! -f "$cfg_file" ]; then
+        log_error "config file for $binary not found at $cfg_path."
+        exit 1
+    else
+        log_info "    config file for $binary found at $cfg_path ✓"
+    fi
+}
+
 # Function to check system binaries
 check_binaries_and_configs() {
     log_output "Checking osmo binaries and configs:"
     for binary in "${osmo_binaries[@]}"; do
-        local exec_path=$(get_executable_path "$binary")
-        local cfg_file=$(get_config_path "$cfg_path" "$binary")
-        if [ ! -x "$exec_path" ]; then
-            log_error "$binary not found at $exec_path or not executable."
-            exit 1
-        else
-            log_success "    $binary found at $exec_path ✓"
-        fi
-        if [ ! -f "$cfg_file" ]; then
-            log_error "config file for $binary not found at $cfg_path."
-            exit 1
-        else
-            log_success "    config file for $binary found at $cfg_path ✓"
-        fi
+        check_executable_and_config_exists "$binary"
     done
+    if [ "$include_bts" = true ]; then
+        check_executable_and_config_exists "$osmo_bts_bin"
+    fi
 }
 
 # Function to create osmo log directory if it doesn't exist
@@ -278,9 +298,17 @@ check_binaries_and_configs
 create_osmo_log_directory
 
 # Start osmo services using the unified approach
+log_output "Starting osmo services..."
 for service in "${osmo_binaries[@]}"; do
     exec_path=$(get_executable_path "$service")
     $exec_path -c $cfg_path/${service}.cfg 1>${log_path}/${service}.log 2>&1 &
 done
+
+# Start BTS service if requested
+if [ "$include_bts" = true ]; then
+    log_output "Starting BTS service..."
+    exec_path=$(get_executable_path "$osmo_bts_bin")
+    $exec_path -c $cfg_path/${osmo_bts_bin}.cfg 1>${log_path}/${osmo_bts_bin}.log 2>&1 &
+fi
 
 log_success "All osmo services started. Logs are being written to ${BOLD}${log_path}${RESET}"
