@@ -1,0 +1,19 @@
+repos:
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.11.0.1
+    hooks:
+      - id: shellcheck
+        args: ["-x"]
+  - repo: https://github.com/scop/pre-commit-shfmt
+    rev: v3.12.0-2
+    hooks:
+      - id: shfmt
+        args: ["-i", "4", "-ci", "-sr"]
+  - repo: local
+    hooks:
+      - id: format-cpp
+        name: Format C/C++ with clang-format
+        entry: bash ./format_code.sh
+        language: system
+        pass_filenames: false
+        stages: [commit]

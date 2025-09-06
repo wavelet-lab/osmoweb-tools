@@ -1,0 +1,29 @@
+name: Shell CI
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck shfmt
+
+      - name: ShellCheck
+        run: |
+          # -x: follow 'source' directives
+          shellcheck -x scripts/**/*.sh
+
+      - name: shfmt (diff)
+        run: |
+          shfmt -d -i 4 -ci -sr scripts
+
+      - name: Run libosmolog tests
+        run: |
+          bash tests/test_libosmolog.sh
