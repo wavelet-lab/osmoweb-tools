@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+# shellcheck source-path=SCRIPTDIR
+
 me=$(basename "$0")
 
 # Source shared library (relative to this script's location)
@@ -61,7 +63,6 @@ while [[ $# -gt 0 ]]; do
 		;;
 	-h | --help)
 		show_usage "$me"
-		exit 0
 		;;
 	*)
 		log_error "Unknown option: $1"
@@ -74,7 +75,6 @@ done
 if [ -z "$service" ]; then
 	log_error "No service specified."
 	show_usage "$me"
-	exit 1
 fi
 
 # Function to get the port number for a given service
@@ -106,7 +106,6 @@ osmo_vty_port=$(get_osmo_vty_port "$service")
 if [ -z "$osmo_vty_port" ]; then
 	log_error "Invalid service: $service"
 	show_usage "$me"
-	exit 1
 fi
 
 telnet localhost "$osmo_vty_port"

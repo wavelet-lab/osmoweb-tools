@@ -3,18 +3,19 @@
 # Use manual assertions instead of `set -e` to avoid premature exits.
 set -uo pipefail
 
+# shellcheck source-path=SCRIPTDIR
+
 # Resolve repo root from this test's location
-TEST_SRC="${BASH_SOURCE[0]:-$0}"
-TEST_DIR="$(cd -- "$(dirname -- "$TEST_SRC")" >/dev/null 2>&1 && pwd)"
+TEST_DIR="$(cd -- "$(dirname -- "$0")" >/dev/null 2>&1 && pwd)"
 REPO_ROOT="$(cd -- "$TEST_DIR/.." >/dev/null 2>&1 && pwd)"
 
-# shellcheck source=../scripts/lib/libosmolog.sh
+# shellcheck source=scripts/lib/libosmolog.sh
 . "$REPO_ROOT/scripts/lib/libosmolog.sh"
 
 reload_libosmolog() {
 	# Allow re-sourcing with new env like NO_COLOR
 	unset LIBOSMOLOG_LOADED
-	# shellcheck source=../scripts/lib/libosmolog.sh
+	# shellcheck source=scripts/lib/libosmolog.sh
 	. "$REPO_ROOT/scripts/lib/libosmolog.sh"
 }
 
@@ -76,6 +77,7 @@ assert_contains "$filtered" "warn" "warn visible"
 section "Die exits non-zero"
 NO_COLOR=1 LOG_LEVEL=info QUIET=false die_output=$({
 	die "fatal"
+    # shellcheck disable=SC2317 # Ignore "echo after" in dead code
 	echo "after"
 } 2>&1)
 rc=$?

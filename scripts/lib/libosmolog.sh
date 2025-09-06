@@ -63,31 +63,31 @@ get_timestamp() {
 
 # Logging helpers; send errors/warnings to stderr
 log_debug() {
-	__is_not_quiet && __lvl_enabled debug && echo "${BLUE}DEBUG  ${RESET} $@" >&2
+	__is_not_quiet && __lvl_enabled debug && echo "${BLUE}DEBUG  ${RESET} $*" >&2
 }
 
 log_info() {
-	__is_not_quiet && __lvl_enabled info && echo "${CYAN}INFO   ${RESET} $@"
+	__is_not_quiet && __lvl_enabled info && echo "${CYAN}INFO   ${RESET} $*"
 }
 
 log_warning() {
-	__is_not_quiet && __lvl_enabled warn && echo "${YELLOW}WARN   ${RESET} $@" >&2
+	__is_not_quiet && __lvl_enabled warn && echo "${YELLOW}WARN   ${RESET} $*" >&2
 }
 
 log_error() {
 	#__is_not_quiet && - We want errors always visible
-	__lvl_enabled error && echo "${RED}ERROR  ${RESET} $@" >&2
+	__lvl_enabled error && echo "${RED}ERROR  ${RESET} $*" >&2
 }
 
 log_success() {
-	__is_not_quiet && __lvl_enabled info && echo "${GREEN}SUCCESS${RESET} $@"
+	__is_not_quiet && __lvl_enabled info && echo "${GREEN}SUCCESS${RESET} $*"
 }
 
 log_output() {
-	__is_not_quiet && echo "$@"
+	__is_not_quiet && echo "$*"
 }
 
 die() {
-	log_error "$@"
+	log_error "$*"
 	exit 1
 }
