@@ -31,6 +31,7 @@ The build script automatically detects your package manager and installs the app
 - [Start Osmo Services](#start-osmo-services)
 - [Stop Osmo Services](#stop-osmo-services)
 - [Watch Osmo Logs](#watch-osmo-logs)
+- [Control Osmo via VTY](#control-osmo-via-vty)
 
 ### Build Osmo components
 This script runs under the current user, but it requires root privileges to install the necessary packages and to install the built Osmocom utilities and libraries into the system. Before starting, make sure your user account has sudo access.
@@ -179,6 +180,39 @@ This script:
 
 # Watch logs from a specific log directory
 ./scripts/watch_osmo_logs.sh -l /var/log/osmo
+```
+
+### Control Osmo via VTY
+
+Quickly connect to a service's VTY (telnet) port:
+
+```bash
+./scripts/control_osmo.sh [OPTIONS] [SERVICE]
+```
+
+**Service selectors:**
+- As argument: `osmo-stp`, `osmo-hlr`, `osmo-mgw`, `osmo-msc`, `osmo-bsc`
+- Or as flags: `--stp`, `--hlr`, `--mgw`, `--msc`, `--bsc`
+
+The script automatically maps services to default VTY ports on localhost:
+- STP 4239, HLR 4258, MGW 4243, MSC 4254, BSC 4242
+
+**Options:**
+- `-q, --quiet` - Quiet mode – suppress output messages.
+- `-h, --help` - Display help message.
+
+Note: Requires a telnet client (e.g., `telnet`/`inetutils-telnet`).
+
+**Examples:**
+```bash
+# Connect to MSC VTY
+./scripts/control_osmo.sh osmo-msc
+
+# Connect to BSC VTY using flag form
+./scripts/control_osmo.sh --bsc
+
+# Quiet mode
+./scripts/control_osmo.sh -q osmo-stp
 ```
 
 ## ws-udp-proxy
