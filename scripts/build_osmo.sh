@@ -1,33 +1,20 @@
 #!/usr/bin/env bash
 
+# shellcheck source-path=SCRIPTDIR
+
 me=$(basename "$0")
+
+# Source shared library (relative to this script's location)
+SCRIPT_DIR="$(cd -- "$(dirname -- "$0")" > /dev/null 2>&1 && pwd)"
+# shellcheck source=lib/libosmolog.sh
+. "${SCRIPT_DIR}/lib/libosmolog.sh"
 
 # Constants
 OSMO_INSTALL_PREFIX="/usr/local"
 
-# Color definitions
-if [ -t 1 ] && command -v tput >/dev/null 2>&1; then
-    RED=$(tput setaf 1)
-    GREEN=$(tput setaf 2)
-    YELLOW=$(tput setaf 3)
-    BLUE=$(tput setaf 4)
-    CYAN=$(tput setaf 6)
-    BOLD=$(tput bold)
-    RESET=$(tput sgr0)
-else
-    RED=""
-    GREEN=""
-    YELLOW=""
-    BLUE=""
-    CYAN=""
-    BOLD=""
-    RESET=""
-fi
-
 # Default values
 force_remove=false
 enable_docs=false
-quiet_mode=false
 osmo_path="${OSMO_PATH:-$(pwd)/osmo}"
 cfg_path="${osmo_path}/config"
 config_archive="config.tar.gz"
@@ -58,69 +45,40 @@ show_usage() {
     exit 0
 }
 
-# Function for output (respects quiet mode)
-log_output() {
-    if [ "$quiet_mode" = false ]; then
-        echo "$@"
-    fi
-}
-
-# Function for error messages
-log_error() {
-    echo "${RED}Error:${RESET} $@" >&2
-}
-
-# Function for success messages
-log_success() {
-    if [ "$quiet_mode" = false ]; then
-        echo "${GREEN}$@${RESET}"
-    fi
-}
-
-# Function for warning messages
-log_warning() {
-    if [ "$quiet_mode" = false ]; then
-        echo "${YELLOW}Warning:${RESET} $@"
-    fi
-}
-
-# Function for info messages
-log_info() {
-    if [ "$quiet_mode" = false ]; then
-        echo "${CYAN}$@${RESET}"
-    fi
-}
+# Use library logging; default level info
+export LOG_LEVEL=${LOG_LEVEL:-info}
+export QUIET=false
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
-        -f|--force)
+        -f | --force)
             force_remove=true
             shift
             ;;
-        -d|--docs)
+        -d | --docs)
             enable_docs=true
             shift
             ;;
-        -p|--path)
+        -p | --path)
             osmo_path="$2"
             cfg_path="${osmo_path}/config"
             shift 2
             ;;
-        -c|--cfg)
+        -c | --cfg)
             cfg_path="$2"
             shift 2
             ;;
-        -q|--quiet)
-            quiet_mode=true
+        -q | --quiet)
+            export QUIET=true
             shift
             ;;
-        -h|--help)
-            show_usage $me
+        -h | --help)
+            show_usage "$me"
             ;;
         *)
-            log_error "Unknown option: $1\n" \
-                      "Use ${CYAN}-h${RESET} or ${CYAN}--help${RESET} for usage information"
+            log_error "Unknown option: $1"
+            log_info "Use -h or --help for usage information"
             exit 1
             ;;
     esac
@@ -129,7 +87,7 @@ done
 # Function to remove old builds
 remove_old_builds() {
     log_output "Removing old Osmo builds..."
-    
+
     # Remove libraries
     sudo rm -f ${OSMO_INSTALL_PREFIX}/lib/libosmo*
     sudo rm -f ${OSMO_INSTALL_PREFIX}/lib64/libosmo*
@@ -157,27 +115,27 @@ PKG_INSTALL_ARGS=""
 
 # Function to detect package manager
 detect_package_manager() {
-    if command -v apt-get >/dev/null 2>&1; then
+    if command -v apt-get > /dev/null 2>&1; then
         PACKAGE_MANAGER="apt"
         PKG_CMD="sudo apt-get"
         PKG_UPDATE_ARGS="-y update"
         PKG_INSTALL_ARGS="-y install"
-    elif command -v dnf >/dev/null 2>&1; then
+    elif command -v dnf > /dev/null 2>&1; then
         PACKAGE_MANAGER="dnf"
         PKG_CMD="sudo dnf"
         PKG_UPDATE_ARGS="makecache"
         PKG_INSTALL_ARGS="-y install"
-    elif command -v yum >/dev/null 2>&1; then
+    elif command -v yum > /dev/null 2>&1; then
         PACKAGE_MANAGER="yum"
         PKG_CMD="sudo yum"
         PKG_UPDATE_ARGS="makecache"
         PKG_INSTALL_ARGS="-y install"
-    elif command -v pacman >/dev/null 2>&1; then
+    elif command -v pacman > /dev/null 2>&1; then
         PACKAGE_MANAGER="pacman"
         PKG_CMD="sudo pacman"
         PKG_UPDATE_ARGS="-Sy"
         PKG_INSTALL_ARGS="-S --noconfirm"
-    elif command -v zypper >/dev/null 2>&1; then
+    elif command -v zypper > /dev/null 2>&1; then
         PACKAGE_MANAGER="zypper"
         PKG_CMD="sudo zypper"
         PKG_UPDATE_ARGS="refresh"
@@ -186,29 +144,29 @@ detect_package_manager() {
         log_error "No supported package manager found (apt, dnf, yum, pacman, zypper)"
         exit 1
     fi
-    
+
     log_output "Detected package manager: $PACKAGE_MANAGER"
 }
 
 # Function to check if a package is available
 check_package_available() {
     local package="$1"
-    
+
     case "$PACKAGE_MANAGER" in
         "apt")
             apt-cache search "^${package}$" | grep -q "^${package}"
             ;;
         "dnf")
-            dnf list available "$package" >/dev/null 2>&1
+            dnf list available "$package" > /dev/null 2>&1
             ;;
         "yum")
-            yum list available "$package" >/dev/null 2>&1
+            yum list available "$package" > /dev/null 2>&1
             ;;
         "pacman")
-            pacman -Ss "^${package}$" >/dev/null 2>&1
+            pacman -Ss "^${package}$" > /dev/null 2>&1
             ;;
         "zypper")
-            zypper se -x "$package" >/dev/null 2>&1
+            zypper se -x "$package" > /dev/null 2>&1
             ;;
         *)
             # If we can't check, assume it's available
@@ -223,7 +181,7 @@ get_build_packages() {
         "apt")
             echo "build-essential autoconf automake libtool pkg-config git cmake"
             ;;
-        "dnf"|"yum")
+        "dnf" | "yum")
             echo "gcc gcc-c++ make autoconf automake libtool pkgconfig git cmake"
             ;;
         "pacman")
@@ -241,7 +199,7 @@ get_core_packages() {
         "apt")
             echo "libgnutls28-dev libsctp-dev libtalloc-dev libpcsclite-dev libusb-1.0-0-dev libmnl-dev libsystemd-dev"
             ;;
-        "dnf"|"yum")
+        "dnf" | "yum")
             echo "gnutls-devel lksctp-tools-devel libtalloc-devel pcsc-lite-devel libusb1-devel libmnl-devel systemd-devel"
             ;;
         "pacman")
@@ -264,7 +222,7 @@ get_network_packages() {
             fi
             echo "$apt_packages"
             ;;
-        "dnf"|"yum")
+        "dnf" | "yum")
             echo "liburing-devel ortp-devel libosip2-devel sofia-sip-devel"
             ;;
         "pacman")
@@ -282,7 +240,7 @@ get_database_packages() {
         "apt")
             echo "libsqlite3-dev libdbi-dev libdbd-sqlite3"
             ;;
-        "dnf"|"yum")
+        "dnf" | "yum")
             echo "sqlite-devel libdbi-devel libdbi-dbd-sqlite"
             ;;
         "pacman")
@@ -305,7 +263,7 @@ get_ssl_packages() {
             fi
             echo "$apt_packages"
             ;;
-        "dnf"|"yum")
+        "dnf" | "yum")
             echo "openssl-devel c-ares-devel"
             ;;
         "pacman")
@@ -323,7 +281,7 @@ get_doc_packages() {
         "apt")
             echo "doxygen graphviz"
             ;;
-        "dnf"|"yum")
+        "dnf" | "yum")
             echo "doxygen graphviz"
             ;;
         "pacman")
@@ -339,14 +297,15 @@ get_doc_packages() {
 install_package_group() {
     local group_name="$1"
     local packages="$2"
-    local critical="$3"  # true/false - whether failure should stop the script
-    
+    local critical="$3" # true/false - whether failure should stop the script
+
     if [ -z "$packages" ]; then
         log_warning "No $group_name packages defined for $PACKAGE_MANAGER"
         return 0
     fi
-    
+
     log_output "Installing $group_name..."
+    # shellcheck disable=SC2086 # intentional word splitting for package manager args and package list
     if $PKG_CMD $PKG_INSTALL_ARGS $packages; then
         log_success "$group_name installed successfully"
         return 0
@@ -372,6 +331,7 @@ install_required_packages() {
 
     # Update package cache
     log_output "Updating package cache..."
+    # shellcheck disable=SC2086 # intentional word splitting for package manager args
     if ! $PKG_CMD $PKG_UPDATE_ARGS; then
         log_error "Failed to update package cache"
         exit 1
@@ -382,7 +342,7 @@ install_required_packages() {
     install_package_group "core libraries" "$(get_core_packages)" "true"
     install_package_group "network libraries" "$(get_network_packages)" "true"
     install_package_group "database libraries" "$(get_database_packages)" "true"
-    
+
     # SSL packages - install each separately for better error handling
     SSL_PACKAGES=$(get_ssl_packages)
     for pkg in $SSL_PACKAGES; do
@@ -410,10 +370,10 @@ extract_config_files() {
         mkdir -p "$target_path"
         return 0
     fi
-    
+
     # Create target directory if it doesn't exist
     mkdir -p "$target_path"
-    
+
     # Extract archive to config directory
     if tar -xzf "$config_file" -C "$target_path"; then
         log_success "Successfully extracted config files to: $target_path"
@@ -427,8 +387,10 @@ extract_config_files() {
 # Function to get specific configure options for each repository
 get_configure_options() {
     local repo_name="$1"
-    local options="--prefix=${OSMO_INSTALL_PREFIX}"
-    local doxygen_options=$([ "$enable_docs" = false ] && echo "--disable-doxygen" || echo "")
+    local options
+    options="--prefix=${OSMO_INSTALL_PREFIX}"
+    local doxygen_options
+    doxygen_options=$([ "$enable_docs" = false ] && echo "--disable-doxygen" || echo "")
 
     case "$repo_name" in
         "libosmocore")
@@ -446,26 +408,20 @@ get_configure_options() {
         "libosmo-sigtran")
             options="$options $doxygen_options"
             ;;
-        "osmo-mgw")
-            options="$options"
-            ;;
-        "osmo-hlr")
-            options="$options"
-            ;;
+        "osmo-mgw") ;;
+        "osmo-hlr") ;;
         "osmo-msc")
             options="$options --enable-smpp"
             ;;
-        "osmo-bsc")
-            options="$options"
-            ;;
+        "osmo-bsc") ;;
         "osmo-bts")
             options="$options --enable-trx"
             ;;
         *)
-            options="$options"
+            :
             ;;
     esac
-    
+
     echo "$options"
 }
 
@@ -487,8 +443,8 @@ clone_osmo_repositories() {
 
     log_output "Starting clone and build process..."
 
-    cd "$osmo_path"
-    
+    cd "$osmo_path" || exit
+
     # Clone repositories
     for repo in "${repositories[@]}"; do
         repo_name=$(basename "$repo" .git)
@@ -507,7 +463,8 @@ clone_osmo_repositories() {
 
 # Function to build Osmo repositories
 build_osmo_repositories() {
-    local osmo_path="$1"
+    local osmo_path
+    osmo_path="$1"
 
     # Build repositories in dependency order
     local build_order=(
@@ -538,15 +495,19 @@ build_osmo_repositories() {
             fi
 
             # Get specific configure options for the repository
-            local configure_opts=$(get_configure_options "$repo")
+            local configure_opts
+            configure_opts=$(get_configure_options "$repo")
             log_output "Configure options for $repo: $configure_opts"
-            if ! ./configure $configure_opts; then
+            # Convert options string into an array to preserve word boundaries and avoid SC2086
+            # shellcheck disable=SC2206 # we intentionally split the options into an array
+            local opts_array=($configure_opts)
+            if ! ./configure "${opts_array[@]}"; then
                 log_error "Failed to configure $repo"
                 exit 1
             fi
 
             # Build the project
-            if ! make -j$(nproc); then
+            if ! make -j"$(nproc)"; then
                 log_error "Failed to build $repo"
                 exit 1
             fi
@@ -556,7 +517,7 @@ build_osmo_repositories() {
                 log_error "Failed to install $repo"
                 exit 1
             fi
-            
+
             if ! sudo ldconfig; then
                 log_error "Failed to update library cache after installing $repo"
                 exit 1
@@ -580,8 +541,8 @@ if [ -d "$osmo_path" ]; then
         log_output "Force flag detected. Removing existing directory: $osmo_path"
         rm -rf "$osmo_path"
     else
-        log_error "Osmo path already exists: $osmo_path\n" \
-                  "Use -f or --force flag to remove existing directory"
+        log_error "Osmo path already exists: $osmo_path"
+        log_info "Use -f or --force flag to remove existing directory"
         exit 1
     fi
 fi
@@ -603,7 +564,7 @@ install_required_packages
 # Extract configuration files
 extract_config_files "$config_archive" "$cfg_path"
 
-cd "$osmo_path"
+cd "$osmo_path" || exit
 osmo_path_full=$(pwd)
 
 # Clone Osmo repositories
