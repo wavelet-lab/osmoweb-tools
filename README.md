@@ -46,13 +46,13 @@ Build all Osmo components from source code:
 **Options:**
 - `-f, --force` - Force removal of the existing osmo directory.
 - `-d, --docs` - Enable documentation generation (doxygen).
-- `-p, --path <path>` - Specify a custom osmo build path (default: ./osmo). It also changes the config path accordingly, so if you need to change the config path, you must use the `-c` option immediately after the `-p` option.
+- `-p, --path <path>` - Specify a custom osmo build path (default: ./osmo). When changing the build path with `-p`, use `-c` to set a custom config path.
 - `-c, --cfg <path>` - Specify a custom osmo config path (default: ./osmo/config).
-- `-q, --quiet` -  Quiet mode – suppress output messages.
+- `-q, --quiet` - Quiet mode – suppress output messages.
 - `-h, --help` - Display help message.
 
 **Supported package managers:**
-- apt-get (Debian/Ubuntu)
+- apt (Debian/Ubuntu)
 - dnf (Fedora/RHEL 8+)
 - yum (CentOS/RHEL 7)
 - pacman (Arch Linux)
@@ -75,12 +75,14 @@ Build all Osmo components from source code:
 
 ### Start Osmo services
 
-Start all Osmo services (HLR, STP, MGW, MSC, BSC):
+Start all Osmo services (HLR, STP, MGW, MSC, BSC, BTS, TRX):
 ```bash
 ./scripts/start_osmo.sh [OPTIONS]
 ```
 
 **Options:**
+- `-b, --bts` - Start also the BTS (Base Transceiver Station) service.
+- `-t, --trx {drv}` - Start also the TRX (Transceiver) service with driver {drv}. Valid drivers include: usdr, uhd, usrp, lms, bladeRF, etc. The `-t` option requires the `osmo-bts-trx` program to be running; you can start it yourself, or pass `-b` and the script will start `osmo-bts-trx` for you.
 - `-p, --path <path>` - Specify a custom osmo build path (default: ./osmo). It also changes the config and log paths accordingly, so if you need to change config or log paths, you must use the `-c` or `-l` options immediately after the `-p` option.
 - `-c, --cfg <path>` - Specify a custom osmo config path (default: ./osmo/config).
 - `-l, --log <path>` - Specify a custom osmo log path (default: ./osmo/logs).
@@ -102,6 +104,8 @@ This script:
 - `logs/osmo-mgw.log` - Media Gateway.
 - `logs/osmo-msc.log` - Mobile Switching Center.
 - `logs/osmo-bsc.log` - Base Station Controller.
+- `logs/osmo-bts-trx.log` - Base Transceiver Station Controller.
+- `logs/osmo-trx-{drv}.log` - Transceiver.
 
 **Examples:**
 ```bash
@@ -116,6 +120,9 @@ This script:
 
 # Start in quiet mode
 ./scripts/start_osmo.sh -q
+
+# Start including BTS and TRX with native usdr backend
+./scripts/start_osmo.sh -b -t usdr
 ```
 
 ### Stop Osmo services
@@ -191,8 +198,8 @@ Quickly connect to a service's VTY (telnet) port:
 ```
 
 **Service selectors:**
-- As argument: `osmo-stp`, `osmo-hlr`, `osmo-mgw`, `osmo-msc`, `osmo-bsc`
-- Or as flags: `--stp`, `--hlr`, `--mgw`, `--msc`, `--bsc`
+- As argument: `osmo-stp`, `osmo-hlr`, `osmo-mgw`, `osmo-msc`, `osmo-bsc`, `osmo-bts-trx`, `osmo-trx`
+- Or as flags: `--stp`, `--hlr`, `--mgw`, `--msc`, `--bsc`, `--bts-trx`, `--trx`
 
 The script automatically maps services to default VTY ports on localhost:
 - STP 4239, HLR 4258, MGW 4243, MSC 4254, BSC 4242
@@ -260,5 +267,5 @@ This architecture enables testing and development of web-based mobile network co
 
 ## License
 
-OsmoWeb-Tools is [MIT licensed](https://github.com/wavelet-lab/osmoweb-tools/blob/main/LICENSE).
+OsmoWeb-Tools is licensed under the [MIT License](https://github.com/wavelet-lab/osmoweb-tools/blob/main/LICENSE).
 

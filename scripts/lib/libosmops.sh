@@ -18,6 +18,7 @@ declare -a osmo_binaries=(
     "osmo-msc"
     "osmo-bsc"
     "osmo-bts-trx"
+    "osmo-trx-*"
 )
 
 # Function to find osmo processes

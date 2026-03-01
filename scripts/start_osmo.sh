@@ -14,6 +14,8 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "$0")" > /dev/null 2>&1 && pwd)"
 # Default values
 osmo_path="${OSMO_PATH:-}"
 include_bts=false
+include_trx=false
+driver=""
 
 # Set default paths based on whether osmo_path is provided
 if [ -z "$osmo_path" ]; then
@@ -27,15 +29,19 @@ log_path="${osmo_path}/logs"
 show_usage() {
     echo "${BOLD}Usage:${RESET} $1 [OPTIONS]"
     echo "${BOLD}Options:${RESET}"
-    echo "  ${CYAN}-b, --bts${RESET}      Start also the BTS (Base Transceiver Station) service."
-    echo "  ${CYAN}-p, --path${RESET}     Specify a custom osmo build path (default: ./osmo)."
-    echo "                 It also changes the config and log paths accordingly."
-    echo "                 So if you need to change config or log paths,"
-    echo "                 you need use -c or -l options next after -p option."
-    echo "  ${CYAN}-c, --cfg${RESET}      Specify a custom osmo config path (default: ./osmo/config)."
-    echo "  ${CYAN}-l, --log${RESET}      Specify a custom osmo log path (default: ./osmo/logs)."
-    echo "  ${CYAN}-q, --quiet${RESET}    Quiet mode - suppress output messages."
-    echo "  ${CYAN}-h, --help${RESET}     Show this help message."
+    echo "  ${CYAN}-b, --bts${RESET}       Start also the BTS (Base Transceiver Station) service."
+    echo "  ${CYAN}-t, --trx${RESET} {drv} Start also the TRX (Transceiver) service with driver {drv}."
+    echo "                  Valid drivers are: usdr, uhd, usrp, lms, bladeRF, etc."
+    echo "                  If you specify a driver, you should start the osmo-bts-trx binary,"
+    echo "                  you can use -b option for that."
+    echo "  ${CYAN}-p, --path${RESET}      Specify a custom osmo build path (default: ./osmo)."
+    echo "                  It also changes the config and log paths accordingly."
+    echo "                  So if you need to change config or log paths,"
+    echo "                  you need use -c or -l options next after -p option."
+    echo "  ${CYAN}-c, --cfg${RESET}       Specify a custom osmo config path (default: ./osmo/config)."
+    echo "  ${CYAN}-l, --log${RESET}       Specify a custom osmo log path (default: ./osmo/logs)."
+    echo "  ${CYAN}-q, --quiet${RESET}     Quiet mode - suppress output messages."
+    echo "  ${CYAN}-h, --help${RESET}      Show this help message."
     echo ""
     echo "${BOLD}Environment variables:${RESET}"
     echo "  ${CYAN}OSMO_PATH${RESET}      Override default build path"
@@ -52,6 +58,11 @@ while [[ $# -gt 0 ]]; do
         -b | --bts)
             include_bts=true
             shift
+            ;;
+        -t | --trx)
+            include_trx=true
+            driver="$2"
+            shift 2
             ;;
         -p | --path)
             osmo_path="$2"
@@ -92,6 +103,7 @@ declare -a osmo_binaries=(
 )
 
 osmo_bts_bin="osmo-bts-trx"
+osmo_trx_bin="osmo-trx-$driver"
 
 # Function to get config path
 get_config_path() {
@@ -99,6 +111,14 @@ get_config_path() {
     local program="$2"
 
     echo "$cfg_path/$program.cfg"
+}
+
+# Function to get log path
+get_log_path() {
+    local log_path="$1"
+    local program="$2"
+
+    echo "$log_path/$program.log"
 }
 
 # Function to get executable path
@@ -137,7 +157,7 @@ get_executable_path() {
 
 # Check conflicting old libraries
 check_conflicting_old_libraries() {
-    log_output "Checking for conflicting old libraries:"
+    log_info "Checking for conflicting old libraries:"
 
     # Get all osmo libraries from ldconfig
     local osmo_libs
@@ -178,7 +198,7 @@ check_conflicting_old_libraries() {
                 echo "$lib_paths" | while IFS= read -r path; do
                     local real_path
                     real_path=$(readlink -f "$path")
-                    echo "    ${YELLOW}$path${RESET} -> ${CYAN}$real_path${RESET}"
+                    echo "${YELLOW}$path${RESET} -> ${CYAN}$real_path${RESET}"
                 done
                 conflicts_found=true
             fi
@@ -190,28 +210,26 @@ check_conflicting_old_libraries() {
         log_info "You can run '${CYAN}sudo ldconfig${RESET}' to refresh the cache or remove conflicting libraries."
         exit 1
     else
-        log_success "    No library conflicts detected ✓"
+        log_success "No library conflicts detected ✓"
     fi
 }
 
 # Function to check executable and related config
 check_executable_and_config_exists() {
     local binary="$1"
-    local exec_path
-    exec_path=$(get_executable_path "$binary")
-    local cfg_file
-    cfg_file=$(get_config_path "$cfg_path" "$binary")
+    local exec_path=$(get_executable_path "$binary")
+    local cfg_file=$(get_config_path "$cfg_path" "$binary")
     if [ ! -x "$exec_path" ]; then
         log_error "$binary not found at $exec_path or not executable."
         exit 1
     else
-        log_success "    $binary found at $exec_path ✓"
+        log_success "$binary found at $exec_path ✓"
     fi
     if [ ! -f "$cfg_file" ]; then
         log_error "config file for $binary not found at $cfg_path."
         exit 1
     else
-        log_success "    config file for $binary found at $cfg_path ✓"
+        log_success "config file for $binary found at $cfg_path ✓"
     fi
 }
 
@@ -224,6 +242,9 @@ check_binaries_and_configs() {
     if [ "$include_bts" = true ]; then
         check_executable_and_config_exists "$osmo_bts_bin"
     fi
+    if [ "$include_trx" = true ]; then
+        check_executable_and_config_exists "$osmo_trx_bin"
+    fi
 }
 
 # Function to create osmo log directory if it doesn't exist
@@ -232,6 +253,35 @@ create_osmo_log_directory() {
         mkdir -p "${log_path}"
         log_output "Created log directory: ${BOLD}${log_path}${RESET}"
     fi
+}
+
+# Start osmo service
+start_osmo_service() {
+    local service="$1"
+    local need_sudo="$2"
+    local exec_path=$(get_executable_path "$service")
+    local cfg_file=$(get_config_path "$cfg_path" "$service")
+    local log_file=$(get_log_path "$log_path" "$service")
+
+    local args=()
+    if [ "$need_sudo" = true ]; then
+        sudo echo
+        args+=("sudo")
+    fi
+    args+=("$exec_path")
+
+    # osmo-trx uses -C for config, others use -c
+    if [[ "$1" =~ ^osmo-trx ]]; then
+        args+=("-C")
+    else
+        args+=("-c")
+    fi
+
+    args+=("$cfg_file")
+
+    log_info "Starting $service..."
+    log_info "Command: ${BOLD}"${args[@]}"${RESET}"
+    "${args[@]}" 1> "$log_file" 2>&1 &
 }
 
 # Main
@@ -261,15 +311,22 @@ create_osmo_log_directory
 # Start osmo services using the unified approach
 log_output "Starting osmo services..."
 for service in "${osmo_binaries[@]}"; do
-    exec_path=$(get_executable_path "$service")
-    "$exec_path" -c "$cfg_path"/"${service}".cfg 1> "${log_path}"/"${service}".log 2>&1 &
+    start_osmo_service "$service" false
 done
 
 # Start BTS service if requested
 if [ "$include_bts" = true ]; then
     log_output "Starting BTS service..."
-    exec_path=$(get_executable_path "$osmo_bts_bin")
-    "$exec_path" -c "$cfg_path"/${osmo_bts_bin}.cfg 1> "${log_path}"/${osmo_bts_bin}.log 2>&1 &
+    start_osmo_service "$osmo_bts_bin" false
+fi
+
+# Start TRX service if requested
+if [ "$include_trx" = true ]; then
+    log_output "Starting TRX service..."
+    # If the config contains an uncommented line with 'policy.*', run the TRX binary with sudo
+    cfg_file=$(get_config_path "$cfg_path" "$osmo_trx_bin")
+    need_sudo=$(grep -E -q '^[[:space:]]*[^!].*policy.*' "$cfg_file" && echo true || echo false)
+    start_osmo_service "$osmo_trx_bin" "$need_sudo"
 fi
 
 log_success "All osmo services started. Logs are being written to ${BOLD}${log_path}${RESET}"
