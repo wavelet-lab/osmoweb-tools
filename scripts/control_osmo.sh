@@ -18,11 +18,14 @@ show_usage() {
     echo "${BOLD}Usage:${RESET} $1 [OPTIONS] [SERVICE]"
     echo "${BOLD}Options:${RESET}"
     echo "  ${CYAN}SERVICE${RESET}        Specify the service to connect via telnet (e.g., osmo-stp,"
-    echo "                 osmo-hlr, osmo-mgw, osmo-msc, osmo-bsc)."
-    echo "  ${CYAN}--bsc${RESET}          Start telnet also the BSC (Base Station Controller) service."
-    echo "  ${CYAN}--msc${RESET}          Start telnet also the MSC (Mobile Switching Center) service."
-    echo "  ${CYAN}--hlr${RESET}          Start telnet also the HLR (Home Location Register) service."
-    echo "  ${CYAN}--mgw${RESET}          Start telnet also the MGW (Media Gateway) service."
+    echo "                 osmo-hlr, osmo-mgw, osmo-msc, osmo-bsc, osmo-bts-trx, osmo-trx)."
+    echo "  ${CYAN}--stp${RESET}          Connect to the the STP (Signaling Transfer Point) service via telnet."
+    echo "  ${CYAN}--hlr${RESET}          Connect to the HLR (Home Location Register) service via telnet."
+    echo "  ${CYAN}--mgw${RESET}          Connect to the MGW (Media Gateway) service via telnet."
+    echo "  ${CYAN}--msc${RESET}          Connect to the MSC (Mobile Switching Center) service via telnet."
+    echo "  ${CYAN}--bsc${RESET}          Connect to the BSC (Base Station Controller) service via telnet."
+    echo "  ${CYAN}--bts-trx${RESET}      Connect to the BTS/TRX (Base Transceiver Station/Transceiver) service via telnet."
+    echo "  ${CYAN}--trx${RESET}          Connect to the TRX (Transceiver) service via telnet."
     echo "  ${CYAN}-q, --quiet${RESET}    Quiet mode - suppress output messages."
     echo "  ${CYAN}-h, --help${RESET}     Show this help message."
     echo ""
@@ -55,6 +58,14 @@ while [[ $# -gt 0 ]]; do
             ;;
         osmo-bsc | --bsc)
             service="osmo-bsc"
+            shift
+            ;;
+        osmo-bts-trx | --bts-trx)
+            service="osmo-bts-trx"
+            shift
+            ;;
+        osmo-trx | --trx)
+            service="osmo-trx"
             shift
             ;;
         -q | --quiet)
@@ -94,6 +105,12 @@ get_osmo_vty_port() {
             ;;
         osmo-bsc)
             echo 4242
+            ;;
+        osmo-bts-trx)
+            echo 4241
+            ;;
+        osmo-trx)
+            echo 4237
             ;;
         *)
             echo ""

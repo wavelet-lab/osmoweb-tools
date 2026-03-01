@@ -32,8 +32,8 @@ This script automatically detects your package manager (apt, dnf, yum, pacman, z
 
 #### Ubuntu/Debian (APT):
 ```bash
-sudo apt-get update
-sudo apt-get install build-essential cmake pkg-config qt6-base-dev qt6-websockets-dev
+sudo apt update
+sudo apt install build-essential cmake pkg-config qt6-base-dev qt6-websockets-dev
 ```
 
 #### Fedora (DNF):
