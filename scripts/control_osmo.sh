@@ -8,9 +8,11 @@ me=$(basename "$0")
 SCRIPT_DIR="$(cd -- "$(dirname -- "$0")" > /dev/null 2>&1 && pwd)"
 # shellcheck source=lib/libosmolog.sh
 . "${SCRIPT_DIR}/lib/libosmolog.sh"
+# shellcheck source=lib/libosmops.sh
+. "${SCRIPT_DIR}/lib/libosmops.sh"
 
 # Default values
-service=$1
+service=""
 export QUIET=false
 
 # Function to show usage
@@ -40,34 +42,6 @@ export QUIET=false
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
-        osmo-stp | --stp)
-            service="osmo-stp"
-            shift
-            ;;
-        osmo-hlr | --hlr)
-            service="osmo-hlr"
-            shift
-            ;;
-        osmo-mgw | --mgw)
-            service="osmo-mgw"
-            shift
-            ;;
-        osmo-msc | --msc)
-            service="osmo-msc"
-            shift
-            ;;
-        osmo-bsc | --bsc)
-            service="osmo-bsc"
-            shift
-            ;;
-        osmo-bts-trx | --bts-trx)
-            service="osmo-bts-trx"
-            shift
-            ;;
-        osmo-trx | --trx)
-            service="osmo-trx"
-            shift
-            ;;
         -q | --quiet)
             export QUIET=true
             shift
@@ -76,9 +50,15 @@ while [[ $# -gt 0 ]]; do
             show_usage "$me"
             ;;
         *)
-            log_error "Unknown option: $1"
-            log_info "Use -h or --help for usage information"
-            exit 1
+            selected_service=$(get_osmo_service_from_selector "$1")
+            if [ -n "$selected_service" ]; then
+                service="$selected_service"
+                shift
+            else
+                log_error "Unknown option: $1"
+                log_info "Use -h or --help for usage information"
+                exit 1
+            fi
             ;;
     esac
 done
@@ -87,36 +67,6 @@ if [ -z "$service" ]; then
     log_error "No service specified."
     show_usage "$me"
 fi
-
-# Function to get the port number for a given service
-get_osmo_vty_port() {
-    case $1 in
-        osmo-stp)
-            echo 4239
-            ;;
-        osmo-hlr)
-            echo 4258
-            ;;
-        osmo-mgw)
-            echo 4243
-            ;;
-        osmo-msc)
-            echo 4254
-            ;;
-        osmo-bsc)
-            echo 4242
-            ;;
-        osmo-bts-trx)
-            echo 4241
-            ;;
-        osmo-trx)
-            echo 4237
-            ;;
-        *)
-            echo ""
-            ;;
-    esac
-}
 
 osmo_vty_port=$(get_osmo_vty_port "$service")
 # Check if the service is valid

@@ -73,7 +73,7 @@ get_osmo_processes() {
     local pids_formatted=""
 
     if [ -n "$pids" ]; then
-        pids_formatted=$(echo "$pids" | tr '\n' ',' | sed 's/,/, /g' | sed 's/, $//')
+        pids_formatted=$(format_pid_list "$pids")
     fi
 
     # Return both values via global variables
