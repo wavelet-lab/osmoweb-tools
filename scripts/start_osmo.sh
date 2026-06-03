@@ -93,15 +93,6 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Osmo binaries
-declare -a osmo_binaries=(
-    "osmo-stp"
-    "osmo-hlr"
-    "osmo-mgw"
-    "osmo-msc"
-    "osmo-bsc"
-)
-
 osmo_bts_bin="osmo-bts-trx"
 osmo_trx_bin="osmo-trx-$driver"
 
@@ -217,8 +208,12 @@ check_conflicting_old_libraries() {
 # Function to check executable and related config
 check_executable_and_config_exists() {
     local binary="$1"
-    local exec_path=$(get_executable_path "$binary")
-    local cfg_file=$(get_config_path "$cfg_path" "$binary")
+    local exec_path
+    local cfg_file
+
+    exec_path=$(get_executable_path "$binary")
+    cfg_file=$(get_config_path "$cfg_path" "$binary")
+
     if [ ! -x "$exec_path" ]; then
         log_error "$binary not found at $exec_path or not executable."
         exit 1
@@ -236,7 +231,7 @@ check_executable_and_config_exists() {
 # Function to check system binaries
 check_binaries_and_configs() {
     log_output "Checking osmo binaries and configs:"
-    for binary in "${osmo_binaries[@]}"; do
+    for binary in "${osmo_core_binaries[@]}"; do
         check_executable_and_config_exists "$binary"
     done
     if [ "$include_bts" = true ]; then
@@ -259,9 +254,13 @@ create_osmo_log_directory() {
 start_osmo_service() {
     local service="$1"
     local need_sudo="$2"
-    local exec_path=$(get_executable_path "$service")
-    local cfg_file=$(get_config_path "$cfg_path" "$service")
-    local log_file=$(get_log_path "$log_path" "$service")
+    local exec_path
+    local cfg_file
+    local log_file
+
+    exec_path=$(get_executable_path "$service")
+    cfg_file=$(get_config_path "$cfg_path" "$service")
+    log_file=$(get_log_path "$log_path" "$service")
 
     local args=()
     if [ "$need_sudo" = true ]; then
@@ -270,17 +269,12 @@ start_osmo_service() {
     fi
     args+=("$exec_path")
 
-    # osmo-trx uses -C for config, others use -c
-    if [[ "$1" =~ ^osmo-trx ]]; then
-        args+=("-C")
-    else
-        args+=("-c")
-    fi
+    args+=("$(get_osmo_config_arg "$service")")
 
     args+=("$cfg_file")
 
     log_info "Starting $service..."
-    log_info "Command: ${BOLD}"${args[@]}"${RESET}"
+    log_info "Command: ${BOLD}${args[*]}${RESET}"
     "${args[@]}" 1> "$log_file" 2>&1 &
 }
 
@@ -310,7 +304,7 @@ create_osmo_log_directory
 
 # Start osmo services using the unified approach
 log_output "Starting osmo services..."
-for service in "${osmo_binaries[@]}"; do
+for service in "${osmo_core_binaries[@]}"; do
     start_osmo_service "$service" false
 done
 

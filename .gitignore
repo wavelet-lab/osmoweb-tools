@@ -45,6 +45,7 @@ coverage/
 tmp/
 temp/
 old/
+osmo/
 
 # Runtime data
 pids

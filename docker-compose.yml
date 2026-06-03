@@ -1,0 +1,27 @@
+services:
+  osmo:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        ENABLE_DOCS: "${OSMO_ENABLE_DOCS:-false}"
+    image: osmoweb-tools-osmo:latest
+    container_name: osmoweb-tools-osmo
+    init: true
+    environment:
+      OSMO_CFG_PATH: /etc/osmo
+      OSMO_LOG_PATH: /var/log/osmo
+      OSMO_INCLUDE_BTS: "${OSMO_INCLUDE_BTS:-false}"
+      OSMO_TRX_DRIVER: "${OSMO_TRX_DRIVER:-}"
+    ports:
+      - "4237:4237"
+      - "4239:4239"
+      - "4241:4241"
+      - "4242:4242"
+      - "4243:4243"
+      - "4254:4254"
+      - "4258:4258"
+    volumes:
+      - ${OSMO_HOST_CFG_PATH:-./osmo/config}:/etc/osmo
+      - ${OSMO_HOST_LOG_PATH:-./osmo/logs}:/var/log/osmo
+    restart: unless-stopped

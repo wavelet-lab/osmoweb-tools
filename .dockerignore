@@ -1,0 +1,16 @@
+*
+
+!.dockerignore
+!docker-compose.yml
+!docker-compose.internal.yml
+
+!docker/
+!docker/Dockerfile
+!docker/build-in-container.sh
+!docker/osmo-entrypoint.sh
+
+!scripts/
+!scripts/build_osmo.sh
+!scripts/config.tar.gz
+!scripts/lib/
+!scripts/lib/libosmolog.sh

@@ -15,9 +15,10 @@ OSMO_INSTALL_PREFIX="/usr/local"
 # Default values
 force_remove=false
 enable_docs=false
+enable_smpp=true
 osmo_path="${OSMO_PATH:-$(pwd)/osmo}"
 cfg_path="${osmo_path}/config"
-config_archive="config.tar.gz"
+config_archive="${SCRIPT_DIR}/config.tar.gz"
 
 # Function to show usage
 show_usage() {
@@ -25,6 +26,7 @@ show_usage() {
     echo "${BOLD}Options:${RESET}"
     echo "  ${CYAN}-f, --force${RESET}    Force removal of the existing osmo directory."
     echo "  ${CYAN}-d, --docs${RESET}     Enable documentation generation (doxygen)"
+    echo "  ${CYAN}--no-smpp${RESET}      Disable SMPP support in osmo-msc."
     echo "  ${CYAN}-p, --path${RESET}     Specify a custom osmo build path (default: ./osmo)."
     echo "                 It also changes the config path accordingly"
     echo "                 so if you need to change config path,"
@@ -58,6 +60,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         -d | --docs)
             enable_docs=true
+            shift
+            ;;
+        --no-smpp)
+            enable_smpp=false
             shift
             ;;
         -p | --path)
@@ -179,16 +185,16 @@ check_package_available() {
 get_build_packages() {
     case "$PACKAGE_MANAGER" in
         "apt")
-            echo "build-essential autoconf automake libtool pkg-config git cmake"
+            echo "build-essential autoconf automake libtool pkg-config git cmake python3"
             ;;
         "dnf" | "yum")
-            echo "gcc gcc-c++ make autoconf automake libtool pkgconfig git cmake"
+            echo "gcc gcc-c++ make autoconf automake libtool pkgconfig git cmake python3"
             ;;
         "pacman")
-            echo "base-devel autoconf automake libtool pkgconf git cmake"
+            echo "base-devel autoconf automake libtool pkgconf git cmake python"
             ;;
         "zypper")
-            echo "gcc gcc-c++ make autoconf automake libtool pkg-config git cmake"
+            echo "gcc gcc-c++ make autoconf automake libtool pkg-config git cmake python3"
             ;;
     esac
 }
@@ -258,7 +264,7 @@ get_ssl_packages() {
         "apt")
             local apt_packages="libssl-dev libc-ares-dev"
             # libsmpp34-dev may not be available, try to install what's available
-            if check_package_available "libsmpp34-dev"; then
+            if [ "$enable_smpp" = true ] && check_package_available "libsmpp34-dev"; then
                 apt_packages+=" libsmpp34-dev"
             fi
             echo "$apt_packages"
@@ -411,7 +417,11 @@ get_configure_options() {
         "osmo-mgw") ;;
         "osmo-hlr") ;;
         "osmo-msc")
-            options="$options --enable-smpp"
+            if [ "$enable_smpp" = true ]; then
+                options="$options --enable-smpp"
+            else
+                options="$options --disable-smpp"
+            fi
             ;;
         "osmo-bsc") ;;
         "osmo-bts")
