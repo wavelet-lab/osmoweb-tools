@@ -30,7 +30,8 @@ show_usage() {
     echo "  ${CYAN}start${RESET}          Start Osmo services with docker compose."
     echo "  ${CYAN}stop${RESET}           Stop Osmo services."
     echo "  ${CYAN}restart${RESET}        Restart Osmo services."
-    echo "  ${CYAN}logs${RESET}           Follow container logs."
+    echo "  ${CYAN}logs${RESET}           Follow Osmo service log files."
+    echo "  ${CYAN}status${RESET}         Show container status messages."
     echo "  ${CYAN}shell${RESET}          Open a shell inside the container."
     echo "  ${CYAN}control SERVICE${RESET} Connect to a VTY service from inside the container."
     echo ""
@@ -57,6 +58,8 @@ show_usage() {
     echo "  ./scripts/docker_osmo.sh build"
     echo "  ./scripts/docker_osmo.sh start"
     echo "  ./scripts/docker_osmo.sh -b start"
+    echo "  ./scripts/docker_osmo.sh logs"
+    echo "  ./scripts/docker_osmo.sh status"
     echo "  ./scripts/docker_osmo.sh control osmo-msc"
     echo "  ./scripts/docker_osmo.sh control --bsc"
     exit 0
@@ -84,12 +87,16 @@ prepare_paths() {
 }
 
 compose() {
-    OSMO_INCLUDE_BTS="$include_bts" \
-    OSMO_TRX_DRIVER="$trx_driver" \
-    OSMO_ENABLE_DOCS="$enable_docs" \
-    OSMO_HOST_CFG_PATH="$cfg_path" \
-    OSMO_HOST_LOG_PATH="$log_path" \
-    "${compose_cmd[@]}" \
+    local env_args=(
+        "OSMO_INCLUDE_BTS=$include_bts"
+        "OSMO_TRX_DRIVER=$trx_driver"
+        "OSMO_ENABLE_DOCS=$enable_docs"
+        "OSMO_HOST_CFG_PATH=$cfg_path"
+        "OSMO_HOST_LOG_PATH=$log_path"
+    )
+
+    env "${env_args[@]}" \
+        "${compose_cmd[@]}" \
         --project-directory "$REPO_DIR" \
         -f "${REPO_DIR}/docker-compose.yml" \
         "$@"
@@ -162,6 +169,13 @@ case "$command" in
         compose up -d --force-recreate
         ;;
     logs)
+        prepare_paths
+        if ! compgen -G "${log_path}/*.log" > /dev/null; then
+            die "No Osmo log files found in $log_path"
+        fi
+        tail -f "${log_path}"/*.log
+        ;;
+    status)
         compose logs -f osmo
         ;;
     shell)

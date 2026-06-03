@@ -87,7 +87,8 @@ Build and run the Osmocom backend in Docker without installing Osmocom libraries
 - `start` - Start Osmo services with Docker Compose.
 - `stop` - Stop and remove the Docker Compose service.
 - `restart` - Recreate and start the Docker Compose service.
-- `logs` - Follow Docker container logs.
+- `logs` - Follow Osmo service log files.
+- `status` - Follow Docker container status messages.
 - `shell` - Open a shell inside the running container.
 - `control SERVICE` - Connect to a service VTY from inside the container.
 
@@ -120,6 +121,9 @@ The wrapper creates the host config and log directories if needed. If the config
 
 # Follow logs
 ./scripts/docker_osmo.sh logs
+
+# Follow container status messages
+./scripts/docker_osmo.sh status
 
 # Connect to MSC VTY
 ./scripts/docker_osmo.sh control osmo-msc
@@ -338,4 +342,3 @@ This architecture enables testing and development of web-based mobile network co
 ## License
 
 OsmoWeb-Tools is licensed under the [MIT License](https://github.com/wavelet-lab/osmoweb-tools/blob/main/LICENSE).
-
