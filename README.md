@@ -28,6 +28,7 @@ The build script automatically detects your package manager and installs the app
 
 **Links to the parts:**
 - [Building Osmo](#build-osmo-components)
+- [Docker Osmo](#docker-osmo)
 - [Start Osmo Services](#start-osmo-services)
 - [Stop Osmo Services](#stop-osmo-services)
 - [Watch Osmo Logs](#watch-osmo-logs)
@@ -72,6 +73,75 @@ Build all Osmo components from source code:
 # Build to a custom path
 ./scripts/build_osmo.sh -p /opt/osmo
 ```
+
+### Docker Osmo
+
+Build and run the Osmocom backend in Docker without installing Osmocom libraries and binaries on the host:
+
+```bash
+./scripts/docker_osmo.sh [OPTIONS] COMMAND
+```
+
+**Commands:**
+- `build` - Build the Docker image from Osmocom source repositories.
+- `start` - Start Osmo services with Docker Compose.
+- `stop` - Stop and remove the Docker Compose service.
+- `restart` - Recreate and start the Docker Compose service.
+- `logs` - Follow Docker container logs.
+- `shell` - Open a shell inside the running container.
+- `control SERVICE` - Connect to a service VTY from inside the container.
+
+**Service selectors for `control`:**
+- As argument: `osmo-stp`, `osmo-hlr`, `osmo-mgw`, `osmo-msc`, `osmo-bsc`, `osmo-bts-trx`, `osmo-trx`
+- Or as flags: `--stp`, `--hlr`, `--mgw`, `--msc`, `--bsc`, `--bts-trx`, `--trx`
+
+**Options:**
+- `-b, --bts` - Start also the BTS (Base Transceiver Station) service.
+- `-t, --trx {drv}` - Start also `osmo-trx-{drv}` if that binary is available in the image.
+- `-d, --docs` - Build the Docker image with documentation tools.
+- `-p, --path <path>` - Specify a custom host data path (default: `./osmo`). It also changes config and log paths accordingly.
+- `-c, --cfg <path>` - Specify a custom host config path (default: `./osmo/config`).
+- `-l, --log <path>` - Specify a custom host log path (default: `./osmo/logs`).
+- `-q, --quiet` - Quiet mode.
+- `-h, --help` - Display help message.
+
+The wrapper creates the host config and log directories if needed. If the config directory is empty, it extracts the default configs from `scripts/config.tar.gz`.
+
+**Examples:**
+```bash
+# Build the image
+./scripts/docker_osmo.sh build
+
+# Start STP, HLR, MGW, MSC and BSC in Docker
+./scripts/docker_osmo.sh start
+
+# Start with BTS
+./scripts/docker_osmo.sh -b start
+
+# Follow logs
+./scripts/docker_osmo.sh logs
+
+# Connect to MSC VTY
+./scripts/docker_osmo.sh control osmo-msc
+
+# Connect to BSC VTY using flag form
+./scripts/docker_osmo.sh control --bsc
+
+# Stop services
+./scripts/docker_osmo.sh stop
+```
+
+For a private Docker network setup where another backend container talks to Osmo
+without publishing VTY ports on the host, use the internal Compose example:
+
+```bash
+docker compose -f docker-compose.internal.yml up -d
+```
+
+In the same Compose network, other services can reach Osmo by service name, for
+example `osmo:4242` for BSC VTY or `osmo:4254` for MSC VTY. The internal example
+uses `expose` instead of `ports`, so those ports are documented for Compose
+services but not published on the host.
 
 ### Start Osmo services
 

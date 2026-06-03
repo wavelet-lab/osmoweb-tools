@@ -1,0 +1,41 @@
+services:
+  osmo:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        ENABLE_DOCS: "${OSMO_ENABLE_DOCS:-false}"
+    image: osmoweb-tools-osmo:latest
+    container_name: osmoweb-tools-osmo
+    init: true
+    environment:
+      OSMO_CFG_PATH: /etc/osmo
+      OSMO_LOG_PATH: /var/log/osmo
+      OSMO_INCLUDE_BTS: "${OSMO_INCLUDE_BTS:-false}"
+      OSMO_TRX_DRIVER: "${OSMO_TRX_DRIVER:-}"
+    expose:
+      - "4237"
+      - "4239"
+      - "4241"
+      - "4242"
+      - "4243"
+      - "4254"
+      - "4258"
+    volumes:
+      - ${OSMO_HOST_CFG_PATH:-./osmo/config}:/etc/osmo
+      - ${OSMO_HOST_LOG_PATH:-./osmo/logs}:/var/log/osmo
+    restart: unless-stopped
+
+  # Example backend service. Replace this with your real Node.js backend.
+  # backend:
+  #   build:
+  #     context: ./backend
+  #   environment:
+  #     OSMO_BSC_VTY_HOST: osmo
+  #     OSMO_BSC_VTY_PORT: "4242"
+  #     OSMO_MSC_VTY_HOST: osmo
+  #     OSMO_MSC_VTY_PORT: "4254"
+  #     OSMO_HLR_VTY_HOST: osmo
+  #     OSMO_HLR_VTY_PORT: "4258"
+  #   depends_on:
+  #     - osmo
