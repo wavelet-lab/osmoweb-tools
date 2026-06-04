@@ -108,6 +108,11 @@ Build and run the Osmocom backend in Docker without installing Osmocom libraries
 
 The wrapper creates the host config and log directories if needed. If the config directory is empty, it extracts the default configs from `scripts/config.tar.gz`.
 
+The Docker Compose files run Osmo with host networking. This keeps Osmocom
+configs untouched, preserves `127.0.0.1` semantics, and supports dynamically
+allocated ports such as BTS Osmux ports without maintaining a static Docker
+port list.
+
 **Examples:**
 ```bash
 # Build the image
@@ -135,17 +140,18 @@ The wrapper creates the host config and log directories if needed. If the config
 ./scripts/docker_osmo.sh stop
 ```
 
-For a private Docker network setup where another backend container talks to Osmo
-without publishing VTY ports on the host, use the internal Compose example:
+For a backend container that should talk to Osmo without static Docker port
+mapping or host networking, use the internal Compose example:
 
 ```bash
 docker compose -f docker-compose.internal.yml up -d
 ```
 
-In the same Compose network, other services can reach Osmo by service name, for
-example `osmo:4242` for BSC VTY or `osmo:4254` for MSC VTY. The internal example
-uses `expose` instead of `ports`, so those ports are documented for Compose
-services but not published on the host.
+In this mode, the backend should share the Osmo network namespace with
+`network_mode: "service:osmo"` and connect to Osmo via `127.0.0.1:<port>`, for
+example `127.0.0.1:4242` for BSC VTY or `127.0.0.1:4254` for MSC VTY. This keeps
+the network isolated from the host while preserving Osmocom configs that bind to
+loopback and supporting dynamically allocated ports.
 
 ### Start Osmo services
 
