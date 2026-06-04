@@ -103,10 +103,14 @@ Build and run the Osmocom backend in Docker without installing Osmocom libraries
 - `-p, --path <path>` - Specify a custom host data path (default: `./osmo`). It also changes config and log paths accordingly.
 - `-c, --cfg <path>` - Specify a custom host config path (default: `./osmo/config`).
 - `-l, --log <path>` - Specify a custom host log path (default: `./osmo/logs`).
+- `--data <path>` - Specify a custom host database path (default: `./osmo/data`).
 - `-q, --quiet` - Quiet mode.
 - `-h, --help` - Display help message.
 
-The wrapper creates the host config and log directories if needed. If the config directory is empty, it extracts the default configs from `scripts/config.tar.gz`.
+The wrapper creates the host config, log, and database directories if needed. If
+the config directory is empty, it extracts the default configs from
+`scripts/config.tar.gz`. HLR and SMS SQLite databases are persisted in
+`./osmo/data` by default.
 
 The Docker Compose files run Osmo with host networking. This keeps Osmocom
 configs untouched, preserves `127.0.0.1` semantics, and supports dynamically

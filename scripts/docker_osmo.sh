@@ -18,6 +18,7 @@ compose_cmd=()
 osmo_path="${OSMO_PATH:-${REPO_DIR}/osmo}"
 cfg_path="${osmo_path}/config"
 log_path="${osmo_path}/logs"
+data_path="${osmo_path}/data"
 include_bts=false
 trx_driver=""
 enable_docs=false
@@ -51,6 +52,7 @@ show_usage() {
     echo "  ${CYAN}-p, --path${RESET} PATH Use custom Osmo data path (default: ./osmo)."
     echo "  ${CYAN}-c, --cfg${RESET} PATH  Use custom config path."
     echo "  ${CYAN}-l, --log${RESET} PATH  Use custom log path."
+    echo "  ${CYAN}--data${RESET} PATH     Use custom database path."
     echo "  ${CYAN}-q, --quiet${RESET}     Quiet mode."
     echo "  ${CYAN}-h, --help${RESET}      Show this help message."
     echo ""
@@ -76,9 +78,10 @@ detect_compose() {
 }
 
 prepare_paths() {
-    mkdir -p "$cfg_path" "$log_path"
+    mkdir -p "$cfg_path" "$log_path" "$data_path"
     cfg_path="$(cd "$cfg_path" && pwd)"
     log_path="$(cd "$log_path" && pwd)"
+    data_path="$(cd "$data_path" && pwd)"
 
     if [ -z "$(find "$cfg_path" -mindepth 1 -maxdepth 1 -type f 2> /dev/null)" ]; then
         log_output "Extracting default configs to ${BOLD}${cfg_path}${RESET}"
@@ -93,6 +96,7 @@ compose() {
         "OSMO_ENABLE_DOCS=$enable_docs"
         "OSMO_HOST_CFG_PATH=$cfg_path"
         "OSMO_HOST_LOG_PATH=$log_path"
+        "OSMO_HOST_DATA_PATH=$data_path"
     )
 
     env "${env_args[@]}" \
@@ -120,6 +124,7 @@ while [[ $# -gt 0 ]]; do
             osmo_path="$2"
             cfg_path="${osmo_path}/config"
             log_path="${osmo_path}/logs"
+            data_path="${osmo_path}/data"
             shift 2
             ;;
         -c | --cfg)
@@ -128,6 +133,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         -l | --log)
             log_path="$2"
+            shift 2
+            ;;
+        --data)
+            data_path="$2"
             shift 2
             ;;
         -q | --quiet)

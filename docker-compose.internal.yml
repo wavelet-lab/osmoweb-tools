@@ -16,6 +16,7 @@ services:
     volumes:
       - ${OSMO_HOST_CFG_PATH:-./osmo/config}:/etc/osmo
       - ${OSMO_HOST_LOG_PATH:-./osmo/logs}:/var/log/osmo
+      - ${OSMO_HOST_DATA_PATH:-./osmo/data}:/usr/local/etc/osmocom
     restart: unless-stopped
 
   # Example backend service. Replace this with your real Node.js backend.

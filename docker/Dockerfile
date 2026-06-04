@@ -52,11 +52,11 @@ COPY docker/osmo-entrypoint.sh /usr/local/bin/osmo-entrypoint.sh
 COPY scripts/config.tar.gz /opt/osmo/config.tar.gz
 
 RUN chmod +x /usr/local/bin/osmo-entrypoint.sh \
-    && mkdir -p /etc/osmo /var/log/osmo \
+    && mkdir -p /etc/osmo /var/log/osmo /usr/local/etc/osmocom \
     && tar -xzf /opt/osmo/config.tar.gz -C /etc/osmo \
     && ldconfig
 
-VOLUME ["/etc/osmo", "/var/log/osmo"]
+VOLUME ["/etc/osmo", "/var/log/osmo", "/usr/local/etc/osmocom"]
 
 EXPOSE 4237 4239 4241 4242 4243 4254 4258
 
